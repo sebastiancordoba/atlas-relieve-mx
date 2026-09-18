@@ -11,7 +11,7 @@ import { sampleProfile, stats, profileSVG, statsHTML, suavizar } from './profile
 
 // ---------------------------------------------------------------- estado
 const DEF = {
-  base:'esri-sat', labels:true, terrain:false, exageracion:1.5,
+  base:'esri-sat', labels:true, terrain:false, exageracion:1.5, proyeccion:'mercator',
   hillshade:true, hsIntensidad:0.45, hsAzimut:315,
   analisis:'none', anOpacidad:0.72, anZoom:13,
   curvas:false, intervalo:100,
@@ -46,6 +46,7 @@ function leerHash(){
     if (k === 'a') state.analisis = v;
     if (k === 'e') state.env = v;
     if (k === 't') state.terrain = v === '1';
+    if (k === 'p') state.proyeccion = v;
   }
   return { zoom:p[0], lat:p[1], lon:p[2], bearing:p[3]||0, pitch:p[4]||0 };
 }
@@ -57,7 +58,8 @@ function escribirHash(){
     const c = map.getCenter();
     const h = `#${map.getZoom().toFixed(2)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`
       + `/${map.getBearing().toFixed(0)}/${map.getPitch().toFixed(0)}`
-      + `&b=${state.base},a=${state.analisis},e=${state.env},t=${state.terrain?1:0}`;
+      + `&b=${state.base},a=${state.analisis},e=${state.env},t=${state.terrain?1:0}`
+      + `,p=${state.proyeccion}`;
     history.replaceState(null, '', h);
   }, 400);
 }
@@ -153,6 +155,17 @@ function aplicarSombreado(){
   }, antesDe('l-hillshade'));
 }
 
+const PROYECCIONES = {
+  mercator:{ type:'mercator' },
+  globo:{ type:'globe' },
+  auto:{ type:['interpolate',['linear'],['zoom'], 3,'vertical-perspective', 6,'mercator'] },
+};
+function aplicarProyeccion(){
+  try { map.setProjection(PROYECCIONES[state.proyeccion] || PROYECCIONES.mercator); }
+  catch (e) { mensaje('Proyeccion no disponible en esta version'); }
+  actualizarEstado();
+}
+
 function aplicarTerreno(){
   map.setTerrain(state.terrain ? { source:'dem', exaggeration:state.exageracion } : null);
   if (state.terrain && map.getPitch() < 25) map.easeTo({ pitch:60, duration:700 });
@@ -186,7 +199,7 @@ function aplicarLeyenda(){
 
 function refrescarTodo(){
   aplicarBase(); aplicarEnv(); aplicarAnalisis(); aplicarSombreado(); aplicarCurvas();
-  aplicarEtiquetas(); aplicarTerreno(); aplicarLeyenda(); guardarEstado();
+  aplicarEtiquetas(); aplicarTerreno(); aplicarProyeccion(); aplicarLeyenda(); guardarEstado();
 }
 
 // ---------------------------------------------------------------- panel lateral
@@ -218,6 +231,13 @@ function construirPanel(){
       if (map.getLayer('l-hillshade')) map.setPaintProperty('l-hillshade','hillshade-illumination-direction',v);
       guardarEstado(); } });
   t.appendChild(el('div','hintline','Con el terreno activo, arrastra con clic derecho (o dos dedos) para inclinar la camara.'));
+
+  t.appendChild(el('div','block-title','Proyeccion'));
+  selector(t, { label:'Vista', value:state.proyeccion,
+    options:[['mercator','Web Mercator (plana)'],['globo','Globo (areas reales)'],['auto','Globo lejos, plana cerca']],
+    onChange:v => { state.proyeccion = v; aplicarProyeccion(); guardarEstado(); } });
+  t.appendChild(el('div','note','Mercator conserva los angulos: por eso la pendiente y la orientacion se '
+    + 'calculan bien sobre el. Lo que deforma son las areas, y la barra inferior te dice cuanto.'));
 
   const a = document.getElementById('sec-analysis');
   optionList(a, ANALYSIS_LAYERS, state.analisis, id => {
@@ -477,6 +497,10 @@ map.on('mousemove', ev => {
 function actualizarEstado(){
   const z = map.getZoom(), lat = map.getCenter().lat;
   const res = metersPerPixel(lat, z+1);
+  const inflacion = 1 / Math.cos(lat*Math.PI/180)**2;
+  const $d = document.getElementById('st-dist');
+  if ($d) $d.textContent = state.proyeccion === 'mercator'
+    ? `area ×${inflacion.toFixed(2)}` : 'area fiel';
   document.getElementById('st-zoom').textContent = `z ${z.toFixed(1)}`;
   document.getElementById('st-res').textContent = res < 1 ? `${(res*100).toFixed(0)} cm/px` : `${fmt(res,1)} m/px`;
   const vivo = document.getElementById('detalle-vivo');
@@ -486,7 +510,10 @@ function actualizarEstado(){
     vivo.innerHTML = `<b>Detalle en pantalla</b><br>
       1 px ≈ ${res < 1 ? (res*100).toFixed(0)+' cm' : fmt(res,1)+' m'} en el terreno.<br>
       Teselas servidas a z${tz}${b && Math.round(z+1) > b.maxzoom ? ' (ampliadas: ya no hay mas detalle)' : ''}.<br>
-      Analisis del relieve a ${fmt(metersPerPixel(lat, state.anZoom),0)} m por celda.`;
+      Analisis del relieve a ${fmt(metersPerPixel(lat, state.anZoom),0)} m por celda.<br>
+      ${state.proyeccion === 'mercator'
+        ? `A esta latitud Mercator infla el area <b>×${inflacion.toFixed(2)}</b>; las distancias medidas no lo sufren (se calculan sobre la esfera).`
+        : 'Proyeccion de areas fieles activa.'}`;
   }
 }
 

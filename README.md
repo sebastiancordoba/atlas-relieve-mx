@@ -58,6 +58,52 @@ python3 -m http.server 8080 -d teselas   # y usa http://localhost:8080/{z}/{x}/{
 
 ---
 
+## ¿Y la proyección Equal Earth?
+
+Equal Earth (Šavrič, Patterson y Jenny, 2018) es una proyección **de áreas iguales**
+pensada para mapas de mundo. No se puede usar como proyección del mapa interactivo, y
+hay dos razones distintas:
+
+1. **Técnica**: MapLibre GL JS solo implementa `mercator`, `globe` y
+   `vertical-perspective`. Las teselas de todos los servicios (Esri, Sentinel-2, GIBS,
+   el DEM) están cortadas en Web Mercator; reproyectarlas al vuelo a Equal Earth
+   implicaría rasterizar cada tesela en el cliente, con pérdida de nitidez y de
+   rendimiento.
+2. **De fondo, y más importante**: Web Mercator es **conforme**, es decir conserva los
+   ángulos localmente. Por eso la pendiente y la orientación de ladera se calculan
+   correctamente sobre él —la celda es cuadrada en el terreno y el gradiente no se
+   deforma—. En una proyección de áreas iguales los ángulos *sí* se distorsionan: la
+   pendiente saldría sesgada de forma distinta según la latitud. Para análisis de
+   relieve, Mercator es la elección correcta, no un accidente histórico.
+
+**Lo que sí deforma Mercator es el área**, y en México se nota:
+
+| Latitud | Ejemplo | Área inflada |
+|---|---|---|
+| 14.9° | Tapachula, Chis. | ×1.07 |
+| 19.4° | CDMX | ×1.12 |
+| 25.7° | Monterrey, N.L. | ×1.23 |
+| 32.5° | Tijuana, B.C. | ×1.41 |
+
+Un polígono en Baja California se ve **31 % más grande** que uno del mismo tamaño real
+en Chiapas. Para que eso no engañe, la app hace tres cosas:
+
+- La barra inferior muestra en todo momento el factor de inflación de área
+  (`área ×1.41`) a la latitud del centro.
+- En *Terreno 3D → Proyección* puedes cambiar a **Globo**, que sí muestra áreas fieles
+  (y funciona con todas las capas, incluidas las derivadas del DEM), o al modo
+  automático: globo cuando estás lejos, plano cuando te acercas.
+- Las **mediciones no dependen de la proyección**: las distancias del perfil usan
+  fórmula de haversine sobre la esfera y el tamaño de celda del análisis se corrige
+  con `cos(latitud)`. Lo que ves deformado nunca entra en los números.
+
+Si algún día necesitas un mapa de áreas verdaderas de México para estadística o
+coropletas, la proyección adecuada no sería Equal Earth —que es pseudocilíndrica y
+está optimizada para el planeta entero— sino una **cónica de áreas iguales de Albers**
+con paralelos estándar en ~17.5° y ~29.5° N, o la Cónica Conforme de Lambert que usa
+el INEGI si lo que te importa son las formas. Eso se hace fuera del mapa deslizante,
+con `d3-geo` o GDAL, sobre datos vectoriales.
+
 ## Qué hace la app
 
 **Relieve**
@@ -88,6 +134,8 @@ python3 -m http.server 8080 -d teselas   # y usa http://localhost:8080/{z}/{x}/{
   suelo SMAP, temperatura del mar y luces nocturnas, con selector de fecha.
 
 **Aplicación**
+- Proyección seleccionable: Mercator, globo de áreas fieles o transición automática,
+  con indicador permanente de la distorsión de área.
 - Instalable (PWA), caché de teselas para campo sin señal, estado persistente,
   URL compartible (`#zoom/lat/lon/bearing/pitch&b=…`), buscador de lugares y
   atajos de teclado: `I` inspeccionar · `P` perfil · `3` terreno 3D · `C` curvas ·
