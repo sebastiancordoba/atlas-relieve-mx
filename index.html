@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Atlas de Relieve — México</title>
+<meta name="description" content="Relieve, pendientes, naturaleza y clima de México con datos satelitales abiertos">
+<meta name="theme-color" content="#0a0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Relieve MX">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+
+  <aside id="sidebar">
+    <header class="brand">
+      <div class="brand-mark">▲</div>
+      <div>
+        <h1>Atlas de Relieve</h1>
+        <p>México · terreno, naturaleza y clima</p>
+      </div>
+      <button id="sidebar-toggle" title="Ocultar panel">‹</button>
+    </header>
+
+    <div class="search">
+      <input id="search-input" type="search" placeholder="Buscar lugar (ej. Pico de Orizaba)" autocomplete="off">
+      <ul id="search-results" class="hidden"></ul>
+    </div>
+
+    <div class="scroll">
+      <section class="sec" data-open="1">
+        <h2>Mapa base <span class="chev">▾</span></h2>
+        <div class="body" id="sec-base"></div>
+      </section>
+
+      <section class="sec" data-open="1">
+        <h2>Terreno 3D y sombreado <span class="chev">▾</span></h2>
+        <div class="body" id="sec-terrain"></div>
+      </section>
+
+      <section class="sec" data-open="1">
+        <h2>Análisis del relieve <span class="chev">▾</span></h2>
+        <div class="body" id="sec-analysis"></div>
+      </section>
+
+      <section class="sec">
+        <h2>Naturaleza y clima (NASA) <span class="chev">▾</span></h2>
+        <div class="body" id="sec-env"></div>
+      </section>
+
+      <section class="sec">
+        <h2>Herramientas <span class="chev">▾</span></h2>
+        <div class="body" id="sec-tools"></div>
+      </section>
+
+      <section class="sec">
+        <h2>Sitios de estudio <span class="chev">▾</span></h2>
+        <div class="body" id="sec-places"></div>
+      </section>
+
+      <section class="sec">
+        <h2>Detalle y fuentes <span class="chev">▾</span></h2>
+        <div class="body" id="sec-sources"></div>
+      </section>
+    </div>
+  </aside>
+
+  <main id="stage">
+    <div id="map"></div>
+
+    <div id="legend" class="legend hidden"></div>
+
+    <div id="inspector" class="card hidden">
+      <div class="card-head">
+        <strong>Punto inspeccionado</strong>
+        <button class="x" data-close="inspector">×</button>
+      </div>
+      <div class="card-body" id="inspector-body"></div>
+    </div>
+
+    <div id="profile" class="card wide hidden">
+      <div class="card-head">
+        <strong>Perfil topográfico</strong>
+        <span class="spacer"></span>
+        <button class="mini" id="profile-clear">Limpiar</button>
+        <button class="x" data-close="profile">×</button>
+      </div>
+      <div class="card-body" id="profile-body"></div>
+    </div>
+
+    <div id="statusbar">
+      <span id="st-coords">—</span>
+      <span id="st-elev">—</span>
+      <span id="st-zoom">—</span>
+      <span id="st-res">—</span>
+      <span class="spacer"></span>
+      <span id="st-msg"></span>
+    </div>
+
+    <div id="hint" class="hint">Clic en el mapa para inspeccionar un punto · arrastra con clic derecho para inclinar</div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

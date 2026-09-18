@@ -1,0 +1,13 @@
+{
+  "name": "atlas-relieve-mx",
+  "version": "1.0.0",
+  "description": "App web para estudiar relieve, naturaleza y clima de Mexico con datos satelitales abiertos",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["dem","mexico","relieve","pendiente","clima","maplibre","sentinel","srtm"],
+  "license": "MIT",
+  "private": true
+}
