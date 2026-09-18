@@ -161,7 +161,11 @@ se nota de inmediato.
 - Instalable (PWA), caché de teselas para campo sin señal, estado persistente,
   URL compartible (`#zoom/lat/lon/bearing/pitch&b=…`), buscador de lugares y
   atajos de teclado: `I` inspeccionar · `P` perfil · `3` terreno 3D · `C` curvas ·
-  `H` sombreado · `L` etiquetas · `S` panel · `Esc` cerrar.
+  `2` volver a 2D · `H` sombreado · `L` etiquetas · `V` vista de proyección ·
+  `S` panel · `Esc` cerrar.
+
+  Para salir del 3D: apaga *Terreno 3D*, pulsa `2`, usa el botón **Volver a 2D**
+  o haz clic en la brújula del mapa. Apagar el terreno también endereza la cámara.
 
 ---
 

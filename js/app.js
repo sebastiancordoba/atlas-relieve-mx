@@ -168,9 +168,30 @@ function aplicarProyeccion(){
   actualizarEstado();
 }
 
+/** easeTo depende de requestAnimationFrame: si la pestaña esta en segundo plano
+ *  la animacion nunca corre, asi que ahi se aplica de golpe. */
+function moverCamara(opciones){
+  if (document.visibilityState === 'visible') map.easeTo({ duration:700, ...opciones });
+  else map.jumpTo(opciones);
+}
+
 function aplicarTerreno(){
   map.setTerrain(state.terrain ? { source:'dem', exaggeration:state.exageracion } : null);
-  if (state.terrain && map.getPitch() < 25) map.easeTo({ pitch:60, duration:700 });
+  if (state.terrain){
+    if (map.getPitch() < 25) moverCamara({ pitch:60 });
+  } else if (map.getPitch() > 0){
+    moverCamara({ pitch:0 });                   // al apagar el relieve, la camara vuelve a cenital
+  }
+}
+
+/** Vuelve a la vista plana: sin relieve, sin inclinacion y mirando al norte. */
+function aplanar2D(){
+  state.terrain = false;
+  map.setTerrain(null);
+  moverCamara({ pitch:0, bearing:0 });
+  construirPanel();
+  guardarEstado();
+  mensaje('Vista 2D');
 }
 
 function aplicarEnv(){
@@ -232,7 +253,8 @@ function construirPanel(){
     onInput:v => { state.hsAzimut = v;
       if (map.getLayer('l-hillshade')) map.setPaintProperty('l-hillshade','hillshade-illumination-direction',v);
       guardarEstado(); } });
-  t.appendChild(el('div','hintline','Con el terreno activo, arrastra con clic derecho (o dos dedos) para inclinar la camara.'));
+  t.appendChild(el('div','hintline','Con el terreno activo, arrastra con clic derecho (o dos dedos) para inclinar la camara. '
+    + 'Para volver a 2D: apaga este interruptor, pulsa 2, o haz clic en la brujula del mapa.'));
 
   t.appendChild(el('div','block-title','Proyeccion'));
   selector(t, { label:'Vista', value:state.proyeccion,
@@ -282,7 +304,7 @@ function construirPanel(){
   const g = el('div','btn-grid'); g.style.marginTop = '6px';
   h.appendChild(g);
   button(g, { label:'Norte arriba', onClick:() => map.easeTo({ bearing:0, pitch:state.terrain?60:0 }) });
-  button(g, { label:'Vista cenital', onClick:() => map.easeTo({ pitch:0, bearing:0 }) });
+  button(g, { label:'Volver a 2D', kbd:'2', onClick:aplanar2D });
   button(g, { label:'Copiar enlace', onClick:b => {
     navigator.clipboard?.writeText(location.href);
     b.textContent = 'Enlace copiado'; setTimeout(() => b.textContent = 'Copiar enlace', 1500);
@@ -293,7 +315,8 @@ function construirPanel(){
     localStorage.removeItem('atlas-relieve');
     construirPanel(); refrescarTodo();
   } });
-  h.appendChild(el('div','hintline','Atajos: I inspeccionar · P perfil · 3 terreno · C curvas · H sombreado · V proyeccion · Esc cerrar.'));
+  h.appendChild(el('div','hintline','Atajos: I inspeccionar · P perfil · 3 terreno 3D · 2 volver a 2D · '
+    + 'C curvas · H sombreado · V proyeccion · Esc cerrar.'));
 
   const p = document.getElementById('sec-places');
   for (const pl of PLACES){
@@ -698,6 +721,7 @@ addEventListener('keydown', ev => {
   if (k === 'i') setHerramienta('inspect');
   else if (k === 'p') setHerramienta('profile');
   else if (k === '3'){ state.terrain = !state.terrain; aplicarTerreno(); construirPanel(); guardarEstado(); }
+  else if (k === '2') aplanar2D();
   else if (k === 'c'){ state.curvas = !state.curvas; aplicarCurvas(); construirPanel(); guardarEstado(); }
   else if (k === 'h'){ state.hillshade = !state.hillshade; aplicarSombreado(); construirPanel(); guardarEstado(); }
   else if (k === 'l'){ state.labels = !state.labels; aplicarEtiquetas(); construirPanel(); guardarEstado(); }
