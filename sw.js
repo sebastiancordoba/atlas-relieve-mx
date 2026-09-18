@@ -1,5 +1,5 @@
 // Service worker: shell de la app en cache y cache de teselas para trabajo sin red.
-const SHELL = 'atlas-shell-v2';
+const SHELL = 'atlas-shell-v3';
 const TILES = 'atlas-tiles-v1';
 const MAX_TILES = 2000;
 
@@ -7,7 +7,7 @@ const ARCHIVOS = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/ui.js', './js/dem.js', './js/config.js', './js/ramps.js',
   './js/analysis.js', './js/analysis-worker.js', './js/climate.js',
-  './js/inspect.js', './js/profile.js',
+  './js/inspect.js', './js/profile.js', './js/projections.js', './js/reproject.js',
   './icons/icon.svg', './icons/icon-192.png',
 ];
 

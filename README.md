@@ -97,12 +97,32 @@ en Chiapas. Para que eso no engañe, la app hace tres cosas:
   fórmula de haversine sobre la esfera y el tamaño de celda del análisis se corrige
   con `cos(latitud)`. Lo que ves deformado nunca entra en los números.
 
-Si algún día necesitas un mapa de áreas verdaderas de México para estadística o
-coropletas, la proyección adecuada no sería Equal Earth —que es pseudocilíndrica y
-está optimizada para el planeta entero— sino una **cónica de áreas iguales de Albers**
-con paralelos estándar en ~17.5° y ~29.5° N, o la Cónica Conforme de Lambert que usa
-el INEGI si lo que te importa son las formas. Eso se hace fuera del mapa deslizante,
-con `d3-geo` o GDAL, sobre datos vectoriales.
+### Vista de proyección (solo para mirar)
+
+Como el mapa deslizante no puede cambiar de proyección, la app trae una **vista
+aparte** (botón *Vista de proyección*, o tecla `V`) que **reproyecta la imagen real**,
+no un contorno: toma las teselas Mercator que ya usas —satélite, hipsometría,
+pendiente, NDVI…— arma un mosaico y lo vuelve a proyectar píxel a píxel con inversa
+analítica.
+
+Proyecciones disponibles:
+
+| Proyección | Propiedad | Para qué |
+|---|---|---|
+| **Equal Earth** | Áreas iguales | Mapas de mundo donde ningún continente se agranda |
+| **Mollweide** | Áreas iguales | La equivalente clásica, en elipse |
+| **Albers México** (17.5°/29.5° N) | Áreas iguales | **La correcta para comparar superficies de México** |
+| **Lambert cónica** (INEGI) | Conforme | Formas y ángulos; la de la cartografía oficial |
+| **Web Mercator** | Conforme | Para comparar contra las anteriores |
+
+Incluye retícula, **indicatrices de Tissot** —círculos de radio real constante sobre
+la esfera: en Mercator crecen hacia los polos, en las equiáreas cambian de forma pero
+nunca de tamaño— y exportación a PNG.
+
+Un detalle que la propia vista deja ver: aplicar Equal Earth a un solo país lo
+**sesga**, porque es pseudocilíndrica y está pensada para el planeta entero. Por eso
+para México la elección correcta es Albers, no Equal Earth. Compáralas en la vista y
+se nota de inmediato.
 
 ## Qué hace la app
 
@@ -134,8 +154,10 @@ con `d3-geo` o GDAL, sobre datos vectoriales.
   suelo SMAP, temperatura del mar y luces nocturnas, con selector de fecha.
 
 **Aplicación**
-- Proyección seleccionable: Mercator, globo de áreas fieles o transición automática,
-  con indicador permanente de la distorsión de área.
+- Proyección seleccionable en el mapa: Mercator, globo de áreas fieles o transición
+  automática, con indicador permanente de la distorsión de área.
+- Vista de proyección aparte (`V`): reproyecta la imagen a Equal Earth, Mollweide,
+  Albers México o Lambert INEGI, con retícula, indicatrices de Tissot y exportación PNG.
 - Instalable (PWA), caché de teselas para campo sin señal, estado persistente,
   URL compartible (`#zoom/lat/lon/bearing/pitch&b=…`), buscador de lugares y
   atajos de teclado: `I` inspeccionar · `P` perfil · `3` terreno 3D · `C` curvas ·
@@ -159,6 +181,8 @@ js/ramps.js             Rampas de color compartidas (worker y leyendas)
 js/climate.js           ERA5/Open-Meteo, normales mensuales, Köppen, climograma
 js/inspect.js           Panel del punto inspeccionado
 js/profile.js           Muestreo y gráfica del perfil
+js/projections.js       Equal Earth, Mollweide, Albers y Lambert (directa e inversa)
+js/reproject.js         Mosaico Mercator + reproyeccion pixel a pixel, Tissot y retícula
 js/ui.js                Widgets y leyendas
 sw.js                   Service worker (red primero para el código, caché para teselas)
 server.js               Servidor estático mínimo

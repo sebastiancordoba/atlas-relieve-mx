@@ -81,6 +81,14 @@ export function analysisTiles(kind){
   return [`analysis://${kind}/{z}/{x}/{y}?v=${version}`];
 }
 
+/** Genera la tesela de analisis fuera de MapLibre (la usa la vista de proyeccion). */
+export async function analysisTileRGBA(kind, z, x, y){
+  const grid = await paddedGrid(z, x, y, PAD);
+  if (!grid) return null;
+  const cell = metersPerPixel(yToLat(y + 0.5, z), z);
+  return await runWorker({ kind, grid, S:GRID, pad:PAD, cell, opts:options }, [grid.buffer]);
+}
+
 export function registerAnalysisProtocol(){
   maplibregl.addProtocol('analysis', async (params, abortController) => {
     const m = /^analysis:\/\/([a-z]+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);

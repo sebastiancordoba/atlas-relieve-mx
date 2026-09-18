@@ -97,6 +97,22 @@
       <div class="card-body" id="profile-body"></div>
     </div>
 
+    <div id="proyeccion" class="card modal hidden">
+      <div class="card-head">
+        <strong>Vista de proyección</strong>
+        <span class="spacer"></span>
+        <button class="mini" id="proy-descargar">Descargar PNG</button>
+        <button class="x" data-close="proyeccion">×</button>
+      </div>
+      <div class="card-body">
+        <div class="proj-controls" id="proy-controles"></div>
+        <div class="proj-canvas" id="proy-lienzo">
+          <div class="loading"><span class="spin"></span>Preparando…</div>
+        </div>
+        <div class="proj-nota" id="proy-nota"></div>
+      </div>
+    </div>
+
     <div id="statusbar">
       <span id="st-coords">—</span>
       <span id="st-elev">—</span>

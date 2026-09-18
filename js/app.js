@@ -8,6 +8,8 @@ import { optionList, slider, toggle, selector, dateInput, button, initAccordions
          legendHTML, fmt, el } from './ui.js';
 import { inspect } from './inspect.js';
 import { sampleProfile, stats, profileSVG, statsHTML, suavizar } from './profile.js';
+import { PROYECCIONES, AMBITOS } from './projections.js';
+import { render as renderProyeccion } from './reproject.js';
 
 // ---------------------------------------------------------------- estado
 const DEF = {
@@ -155,13 +157,13 @@ function aplicarSombreado(){
   }, antesDe('l-hillshade'));
 }
 
-const PROYECCIONES = {
+const VISTAS_MAPA = {
   mercator:{ type:'mercator' },
   globo:{ type:'globe' },
   auto:{ type:['interpolate',['linear'],['zoom'], 3,'vertical-perspective', 6,'mercator'] },
 };
 function aplicarProyeccion(){
-  try { map.setProjection(PROYECCIONES[state.proyeccion] || PROYECCIONES.mercator); }
+  try { map.setProjection(VISTAS_MAPA[state.proyeccion] || VISTAS_MAPA.mercator); }
   catch (e) { mensaje('Proyeccion no disponible en esta version'); }
   actualizarEstado();
 }
@@ -285,12 +287,13 @@ function construirPanel(){
     navigator.clipboard?.writeText(location.href);
     b.textContent = 'Enlace copiado'; setTimeout(() => b.textContent = 'Copiar enlace', 1500);
   } });
+  button(g, { label:'Vista de proyeccion', onClick:() => abrirProyeccion() });
   button(g, { label:'Restablecer', onClick:() => {
     Object.assign(state, DEF, { envFecha:fechaOffset(3) });
     localStorage.removeItem('atlas-relieve');
     construirPanel(); refrescarTodo();
   } });
-  h.appendChild(el('div','hintline','Atajos: I inspeccionar · P perfil · 3 terreno · C curvas · H sombreado · Esc cerrar.'));
+  h.appendChild(el('div','hintline','Atajos: I inspeccionar · P perfil · 3 terreno · C curvas · H sombreado · V proyeccion · Esc cerrar.'));
 
   const p = document.getElementById('sec-places');
   for (const pl of PLACES){
@@ -458,6 +461,155 @@ function limpiarPerfil(){
 }
 document.getElementById('profile-clear').onclick = limpiarPerfil;
 
+// ---------------------------------------------------------------- vista de proyeccion
+const proyEstado = {
+  proyeccion:'equal-earth', ambito:'mexico', capa:'base',
+  reticula:true, tissot:false, ancho:1400, ultimo:null,
+};
+
+const CAPAS_PROY = [
+  ['base','Mapa base actual'],
+  ['hypso','Altitud (hipsometrica)'],
+  ['slope','Pendiente'],
+  ['aspect','Orientacion de ladera'],
+  ['tri','Rugosidad'],
+  ['tpi','Posicion topografica'],
+  ['env','Capa ambiental actual'],
+];
+
+function fuenteProyeccion(){
+  if (proyEstado.capa === 'base'){
+    const b = BASEMAPS.find(x => x.id === state.base);
+    if (!b || (!b.tiles && !b.gibs)) return { tiles:[BASEMAPS[0].tiles[0]], maxzoom:BASEMAPS[0].maxzoom };
+    const tiles = b.gibs ? [gibsUrl(b.gibs.layer, b.gibs.level, state.envFecha, b.gibs.format)] : b.tiles;
+    return { tiles, maxzoom:b.maxzoom };
+  }
+  if (proyEstado.capa === 'env'){
+    const cfg = ENV_LAYERS.find(x => x.id === state.env);
+    if (!cfg || cfg.id === 'none') return null;
+    return { tiles:[gibsUrl(cfg.layer, cfg.level, cfg.temporal ? state.envFecha : null, cfg.format)],
+             maxzoom:cfg.level };
+  }
+  return { analisis:proyEstado.capa, maxzoom:Math.min(state.anZoom, getDemSource().maxzoom) };
+}
+
+function abrirProyeccion(){
+  document.getElementById('proyeccion').classList.remove('hidden');
+  construirControlesProy();
+  generarProyeccion();
+}
+
+function construirControlesProy(){
+  const host = document.getElementById('proy-controles');
+  host.innerHTML = '';
+  const grupo = (etiqueta, nodo) => {
+    const g = el('div','grp');
+    g.appendChild(el('label', null, etiqueta));
+    g.appendChild(nodo);
+    host.appendChild(g);
+    return nodo;
+  };
+  const sel = (opciones, valor, onChange) => {
+    const n = el('select');
+    for (const [v,t] of opciones){
+      const o = el('option'); o.value = v; o.textContent = t;
+      if (v === valor) o.selected = true;
+      n.appendChild(o);
+    }
+    n.onchange = () => { onChange(n.value); generarProyeccion(); };
+    return n;
+  };
+
+  grupo('Proyeccion', sel(PROYECCIONES.map(p => [p.id, `${p.nombre} — ${p.propiedad}`]),
+    proyEstado.proyeccion, v => proyEstado.proyeccion = v));
+  grupo('Ambito', sel(Object.entries(AMBITOS).map(([k,a]) => [k, a.nombre]).concat([['vista','Vista actual']]),
+    proyEstado.ambito, v => proyEstado.ambito = v));
+  grupo('Capa', sel(CAPAS_PROY, proyEstado.capa, v => proyEstado.capa = v));
+  grupo('Ancho', sel([[900,'900 px'],[1400,'1400 px'],[2000,'2000 px']].map(([v,t]) => [String(v),t]),
+    String(proyEstado.ancho), v => proyEstado.ancho = +v));
+
+  const t1 = el('label','switch' + (proyEstado.reticula ? ' on' : ''));
+  t1.innerHTML = '<span class="track"></span><span>Reticula</span>';
+  t1.onclick = () => { proyEstado.reticula = !proyEstado.reticula; t1.classList.toggle('on'); generarProyeccion(); };
+  host.appendChild(t1);
+
+  const t2 = el('label','switch' + (proyEstado.tissot ? ' on' : ''));
+  t2.innerHTML = '<span class="track"></span><span>Indicatrices de Tissot</span>';
+  t2.onclick = () => { proyEstado.tissot = !proyEstado.tissot; t2.classList.toggle('on'); generarProyeccion(); };
+  host.appendChild(t2);
+}
+
+let peticionProy = 0;
+async function generarProyeccion(){
+  const mia = ++peticionProy;           // una peticion nueva releva a la anterior
+  const host = document.getElementById('proy-lienzo');
+  const nota = document.getElementById('proy-nota');
+  const fuente = fuenteProyeccion();
+  if (!fuente){
+    host.innerHTML = '<div class="loading">Activa primero una capa ambiental en el panel.</div>';
+    return;
+  }
+  host.innerHTML = '<div class="loading"><span class="spin"></span>Descargando teselas…</div>';
+  const aviso = host.querySelector('.loading');
+
+  let bounds = null;
+  if (proyEstado.ambito === 'vista'){
+    const b = map.getBounds();
+    bounds = [b.getWest(), Math.max(-85, b.getSouth()), b.getEast(), Math.min(85, b.getNorth())];
+  }
+
+  try{
+    await new Promise(r => requestAnimationFrame(r));
+    const out = await renderProyeccion({
+      proyeccion:proyEstado.proyeccion,
+      ambito:proyEstado.ambito === 'vista' ? null : proyEstado.ambito,
+      bounds,
+      fuente,
+      ancho:proyEstado.ancho,
+      presupuesto:fuente.analisis ? 36 : 80,
+      reticula:proyEstado.reticula,
+      tissot:proyEstado.tissot,
+      onProgreso:(hechas, total) => {
+        if (aviso && mia === peticionProy)
+          aviso.innerHTML = `<span class="spin"></span>Teselas ${hechas} / ${total}…`;
+      },
+    });
+    if (mia !== peticionProy) return;   // llego una peticion mas nueva mientras tanto
+
+    const lienzo = out.canvas.transferToImageBitmap
+      ? (() => { const cv = document.createElement('canvas');
+                 cv.width = out.ancho; cv.height = out.alto;
+                 cv.getContext('2d').drawImage(out.canvas, 0, 0);
+                 return cv; })()
+      : out.canvas;
+    host.innerHTML = '';
+    host.appendChild(lienzo);
+    proyEstado.ultimo = lienzo;
+
+    const P = out.proyeccion;
+    nota.innerHTML = `<span class="badge">${P.propiedad}</span>
+      <span>${P.nota}
+        <div class="proj-meta">Mosaico de ${out.mosaico.teselas} teselas a z${out.mosaico.z}
+          (${fmt(out.mosaico.metros * Math.cos(((out.bounds[1]+out.bounds[3])/2)*Math.PI/180), 0)} m por pixel de origen)
+          · lienzo ${out.ancho}×${out.alto} px</div>
+      </span>`;
+  }catch(e){
+    if (mia === peticionProy) host.innerHTML = `<div class="loading">No se pudo generar: ${e.message}</div>`;
+  }
+}
+
+document.getElementById('proy-descargar').onclick = () => {
+  const cv = proyEstado.ultimo;
+  if (!cv) return;
+  cv.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = `proyeccion-${proyEstado.proyeccion}-${proyEstado.capa}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+};
+
 // ---------------------------------------------------------------- eventos
 map.on('load', () => {
   setAnalysisOptions({ interval:state.intervalo });
@@ -549,9 +701,11 @@ addEventListener('keydown', ev => {
   else if (k === 'c'){ state.curvas = !state.curvas; aplicarCurvas(); construirPanel(); guardarEstado(); }
   else if (k === 'h'){ state.hillshade = !state.hillshade; aplicarSombreado(); construirPanel(); guardarEstado(); }
   else if (k === 'l'){ state.labels = !state.labels; aplicarEtiquetas(); construirPanel(); guardarEstado(); }
+  else if (k === 'v') abrirProyeccion();
   else if (k === 's') document.getElementById('app').classList.toggle('collapsed');
   else if (ev.key === 'Escape'){
     $inspector.classList.add('hidden'); $profile.classList.add('hidden');
+    document.getElementById('proyeccion').classList.add('hidden');
     if (state.herramienta === 'profile') setHerramienta('inspect');
   }
 });

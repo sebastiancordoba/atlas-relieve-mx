@@ -251,3 +251,37 @@ table.src td.num{font-family:var(--mono);color:var(--teal);white-space:nowrap}
   place-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;
   color:var(--text);cursor:pointer;box-shadow:var(--shadow);font-size:15px;
 }
+
+/* ---------- modal de proyeccion ---------- */
+.card.modal{
+  top:3vh;left:50%;transform:translateX(-50%);width:min(1180px,92vw);max-height:94vh;
+  display:flex;flex-direction:column;z-index:30;
+}
+#app.collapsed .card.modal{left:50%}
+.proj-controls{
+  display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;
+  padding-bottom:10px;border-bottom:1px solid var(--line-soft);margin-bottom:10px;
+}
+.proj-controls .grp{display:flex;align-items:center;gap:6px}
+.proj-controls label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:600}
+.proj-controls select{width:auto;min-width:130px}
+.proj-controls .switch{padding:0}
+.proj-controls .btn{width:auto;padding:7px 14px;font-weight:500}
+.proj-canvas{
+  position:relative;background:#070b10;border:1px solid var(--line-soft);border-radius:8px;
+  min-height:220px;display:grid;place-items:center;overflow:hidden;
+}
+.proj-canvas canvas{max-width:100%;max-height:64vh;display:block}
+.proj-nota{
+  margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.55;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.proj-nota .badge{
+  flex:0 0 auto;font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:5px;
+  background:var(--accent-soft);border:1px solid rgba(240,166,60,.35);color:var(--accent);
+}
+.proj-meta{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:5px}
+@media (max-width:820px){
+  .card.modal{width:96vw;top:2vh}
+  .proj-canvas canvas{max-height:48vh}
+}
