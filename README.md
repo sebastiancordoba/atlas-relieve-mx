@@ -3,6 +3,10 @@
 App web para estudiar **relieve, pendientes, naturaleza y clima** de México con datos
 satelitales abiertos. Sin llaves de API, sin backend y sin paso de compilación.
 
+**En línea:** https://sebastiancordoba.github.io/atlas-relieve-mx/
+
+Para correrlo localmente:
+
 ```bash
 npm start          # http://localhost:5173
 ```
@@ -216,6 +220,13 @@ más suave pero **no** contiene más información real.
 - Las capas diarias de GIBS tardan algunas horas en publicarse: si sale vacía,
   retrocede un día.
 - Nominatim (buscador) es de uso cortés: no lo llames en bucle.
+
+## Publicación
+
+El sitio se sirve con GitHub Pages directamente desde la rama `master` (raíz del
+repo). No hay paso de compilación: cada push a `master` se publica tal cual. El
+archivo `.nojekyll` evita que Pages procese el repo con Jekyll. Todas las rutas son
+relativas, así que funciona bajo el subdirectorio `/atlas-relieve-mx/` sin ajustes.
 
 ## Créditos de datos
 
